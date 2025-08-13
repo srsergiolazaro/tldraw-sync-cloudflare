@@ -32,6 +32,53 @@ export async function handleAssetUpload(request: IRequest, env: Env) {
 }
 
 // when a user downloads an asset, we retrieve it from the bucket. we also cache the response for performance.
+export async function handleAssetDelete(request: IRequest, env: Env) {
+	const uploadIds = request.params.uploadId.split(',').map(id => id.trim())
+	const results = {
+		success: [] as string[],
+		failures: [] as Array<{id: string, error: string}>
+	}
+
+	for (const uploadId of uploadIds) {
+		try {
+			const objectName = getAssetObjectName(uploadId)
+			const object = await env.TLDRAW_BUCKET.head(objectName)
+			
+			if (!object) {
+				results.failures.push({ id: uploadId, error: 'Asset not found' })
+				continue
+			}
+
+			await env.TLDRAW_BUCKET.delete(objectName)
+
+			// Invalidate cached response for this asset
+			const cacheKey = `/api/uploads/${uploadId}`
+			await caches.default.delete(cacheKey)
+
+			results.success.push(uploadId)
+		} catch (error) {
+			results.failures.push({ 
+				id: uploadId, 
+				error: error instanceof Error ? error.message : 'Unknown error' 
+			})
+		}
+	}
+
+	// If all operations failed, return an error
+	if (results.success.length === 0 && results.failures.length > 0) {
+		return error(404, {
+			success: false,
+			errors: results.failures
+		})
+	}
+
+	return { 
+		ok: true, 
+		success: results.success,
+		failures: results.failures.length > 0 ? results.failures : undefined
+	}
+}
+
 export async function handleAssetDownload(request: IRequest, env: Env, ctx: ExecutionContext) {
 	const objectName = getAssetObjectName(request.params.uploadId)
 
