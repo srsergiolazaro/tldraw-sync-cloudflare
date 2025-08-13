@@ -9,7 +9,7 @@ export { TldrawDurableObject } from "./TldrawDurableObject";
 
 // Configuración de CORS
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "https://astro.taptapp.xyz",
+  "Access-Control-Allow-Origin": "https://astro.taptapp.xyz, https://tldraw-worker-acadexia.sergiolazaromondargo.workers.dev",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, X-Session-Id",
 };
