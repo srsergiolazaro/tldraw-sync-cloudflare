@@ -1,5 +1,14 @@
 import { error, IRequest } from 'itty-router'
 
+// Helper function to strip the file extension
+function stripExtension(filename: string): string {
+    const lastDotIndex = filename.lastIndexOf('.');
+    if (lastDotIndex === -1) {
+        return filename;
+    }
+    return filename.substring(0, lastDotIndex);
+}
+
 // assets are stored in the bucket under the /uploads path
 function getAssetObjectName(uploadId: string) {
 	return `uploads/${uploadId.replace(/[^a-zA-Z0-9_-]+/g, '_')}`
@@ -13,7 +22,8 @@ declare global {
 
 // when a user uploads an asset, we store it in the bucket. we only allow image and video assets.
 export async function handleAssetUpload(request: IRequest, env: Env) {
-	const objectName = getAssetObjectName(request.params.uploadId)
+    const uploadIdWithoutExt = stripExtension(request.params.uploadId);
+	const objectName = getAssetObjectName(uploadIdWithoutExt)
 
 	const contentType = request.headers.get('content-type') ?? ''
 	if (!contentType.startsWith('image/') && !contentType.startsWith('video/')) {
@@ -33,7 +43,7 @@ export async function handleAssetUpload(request: IRequest, env: Env) {
 
 // when a user downloads an asset, we retrieve it from the bucket. we also cache the response for performance.
 export async function handleAssetDelete(request: IRequest, env: Env) {
-	const uploadIds = request.params.uploadId.split(',').map(id => id.trim())
+	const uploadIds = request.params.uploadId.split(',').map(id => stripExtension(id.trim()))
 	const results = {
 		success: [] as string[],
 		failures: [] as Array<{id: string, error: string}>

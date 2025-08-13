@@ -1,6 +1,10 @@
 import { handleUnfurlRequest } from "cloudflare-workers-unfurl";
 import { AutoRouter, error, IRequest } from "itty-router";
-import { handleAssetDownload, handleAssetUpload, handleAssetDelete } from "./assetUploads";
+import {
+  handleAssetDownload,
+  handleAssetUpload,
+  handleAssetDelete,
+} from "./assetUploads";
 
 // Asegúrate de que tu Durable Object esté exportado
 export { TldrawDurableObject } from "./TldrawDurableObject";
@@ -117,8 +121,9 @@ const router = AutoRouter<IRequest, [env: Env, ctx: ExecutionContext]>({
   .post("/api/uploads/:uploadId", handleAssetUpload)
 
   // Descarga de assets del bucket
-  .get("/api/uploads/:uploadId", handleAssetDownload)
+  .get("/api/uploads/:uploadId.:ext?", handleAssetDownload)
 
+  // Borrado de assets del bucket
   .delete("/api/uploads/:uploadId", handleAssetDelete)
 
   // Los marcadores necesitan extraer metadatos de las URLs pegadas
