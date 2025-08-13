@@ -60,10 +60,7 @@ export async function handleAssetDownload(request: IRequest, env: Env, ctx: Exec
 	headers.set('cache-control', 'public, max-age=31536000, immutable')
 	headers.set('etag', object.httpEtag)
 
-	// we set CORS headers so all clients can access assets. we do this here so our `cors` helper in
-	// worker.ts doesn't try to set extra cors headers on responses that have been read from the
-	// cache, which isn't allowed by cloudflare.
-	headers.set('access-control-allow-origin', '*')
+	// CORS headers are handled by the router's finally hook in worker.ts
 
 	// cloudflare doesn't set the content-range header automatically in writeHttpMetadata, so we
 	// need to do it ourselves.
