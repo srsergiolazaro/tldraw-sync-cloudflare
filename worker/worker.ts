@@ -8,29 +8,47 @@ export { TldrawDurableObject } from "./TldrawDurableObject";
 // --- INICIO DE LA SECCIÓN CORS ---
 
 // Configuración de CORS
-const corsHeaders = {
-  "Access-Control-Allow-Origin":
-    "https://astro.taptapp.xyz, https://tldraw-worker-acadexia.sergiolazaromondargo.workers.dev",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, X-Session-Id",
-  "Access-Control-Allow-Credentials": "true",
-};
+// Get the allowed origins from environment variable or use a default
+const ALLOWED_ORIGINS = [
+  "https://astro.taptapp.xyz",
+  "https://tldraw-worker-acadexia.sergiolazaromondargo.workers.dev",
+];
 
-// Responde a las peticiones OPTIONS (pre-flight)
+// Helper function to get CORS headers
+function getCorsHeaders(request: Request) {
+  const origin = request.headers.get("Origin");
+  const isAllowedOrigin = origin && ALLOWED_ORIGINS.includes(origin);
+
+  return {
+    "Access-Control-Allow-Origin": isAllowedOrigin
+      ? origin
+      : ALLOWED_ORIGINS[0],
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, X-Session-Id, *",
+    "Access-Control-Allow-Credentials": "true",
+    "Access-Control-Max-Age": "86400", // 24 hours
+  };
+}
+
+// Handle OPTIONS (pre-flight) requests
 const handleOptions = (request: IRequest) => {
+  // Handle CORS preflight
   if (
     request.headers.get("Origin") !== null &&
-    request.headers.get("Access-Control-Request-Method") !== null &&
-    request.headers.get("Access-Control-Request-Headers") !== null
+    request.headers.get("Access-Control-Request-Method") !== null
   ) {
-    return new Response(null, { headers: corsHeaders });
-  } else {
     return new Response(null, {
-      headers: {
-        Allow: "GET, POST, OPTIONS",
-      },
+      headers: getCorsHeaders(request as unknown as Request),
     });
   }
+
+  // Handle regular OPTIONS request
+  return new Response(null, {
+    headers: {
+      Allow: "GET, POST, PUT, DELETE, OPTIONS",
+      ...getCorsHeaders(request as unknown as Request),
+    },
+  });
 };
 
 // --- FIN DE LA SECCIÓN CORS ---
@@ -46,11 +64,23 @@ const router = AutoRouter<IRequest, [env: Env, ctx: ExecutionContext]>({
   ],
   // Envolvemos la respuesta final con las cabeceras CORS, excepto para WebSockets
   finally: [
-    (response) => {
+    (response, request) => {
       // No modificar las cabeceras de una respuesta WebSocket (status 101)
-      if (response.status === 101) {
-        return response;
-      }
+      if (response.status === 101) return response;
+
+      // Add CORS headers to all responses
+      const headers = new Headers(response.headers);
+      const corsHeaders = getCorsHeaders(request as unknown as Request);
+
+      Object.entries(corsHeaders).forEach(([key, value]) => {
+        if (value) headers.set(key, value);
+      });
+
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      });
 
       // Para todas las demás respuestas, añadimos las cabeceras CORS
       const newHeaders = new Headers(response.headers);
